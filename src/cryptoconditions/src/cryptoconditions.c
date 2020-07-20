@@ -1,25 +1,33 @@
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 #include "strings.h"
 #include "asn/Condition.h"
 #include "asn/Fulfillment.h"
 #include "asn/OCTET_STRING.h"
-#include "cryptoconditions.h"
-#include "src/internal.h"
-#include "src/threshold.c"
-#include "src/prefix.c"
-#include "src/preimage.c"
-#include "src/ed25519.c"
-#include "src/secp256k1.c"
-#include "src/anon.c"
-#include "src/eval.c"
-#include "src/json_rpc.c"
+#include "../include/cryptoconditions.h"
 #include <cJSON.h>
-
-#ifdef __LP64__
-#include <stdlib.h>
-#else
-#include <malloc.h>            // Index into CTransaction.vjoinsplit
-#endif
-
+#include "internal.h"
+#include "threshold.c"
+#include "prefix.c"
+#include "preimage.c"
+#include "ed25519.c"
+#include "secp256k1.c"
+#include "anon.c"
+#include "eval.c"
+#include "json_rpc.c"
 
 struct CCType *CCTypeRegistry[] = {
     &CC_PreimageType,
@@ -54,14 +62,13 @@ void appendUriSubtypes(uint32_t mask, unsigned char *buf) {
 
 
 char *cc_conditionUri(const CC *cond) {
-    unsigned char *fp = cond->type->fingerprint(cond);
-    if (!fp) return NULL;
+    unsigned char *fp = calloc(1, 32);
+    cond->type->fingerprint(cond, fp);
 
     unsigned char *encoded = base64_encode(fp, 32);
 
     unsigned char *out = calloc(1, 1000);
-    sprintf(out, "ni:///sha-256;%s?fpt=%s&cost=%lu",
-            encoded, cc_typeName(cond), cc_getCost(cond));
+    sprintf(out, "ni:///sha-256;%s?fpt=%s&cost=%lu",encoded, cc_typeName(cond), cc_getCost(cond));
     
     if (cond->type->getSubtypes) {
         appendUriSubtypes(cond->type->getSubtypes(cond), out);
@@ -76,6 +83,7 @@ char *cc_conditionUri(const CC *cond) {
 
 ConditionTypes_t asnSubtypes(uint32_t mask) {
     ConditionTypes_t types;
+    memset(&types,0,sizeof(types));
     uint8_t buf[4] = {0,0,0,0};
     int maxId = 0;
 
@@ -108,13 +116,13 @@ uint32_t fromAsnSubtypes(const ConditionTypes_t types) {
 size_t cc_conditionBinary(const CC *cond, unsigned char *buf) {
     Condition_t *asn = calloc(1, sizeof(Condition_t));
     asnCondition(cond, asn);
+    size_t out = 0;
     asn_enc_rval_t rc = der_encode_to_buffer(&asn_DEF_Condition, asn, buf, 1000);
-    if (rc.encoded == -1) {
-        fprintf(stderr, "CONDITION NOT ENCODED\n");
-        return 0;
-    }
+    if (rc.encoded == -1) goto end;
+    out = rc.encoded;
+end:
     ASN_STRUCT_FREE(asn_DEF_Condition, asn);
-    return rc.encoded;
+    return out;
 }
 
 
@@ -136,11 +144,12 @@ void asnCondition(const CC *cond, Condition_t *asn) {
     // This may look a little weird - we dont have a reference here to the correct
     // union choice for the condition type, so we just assign everything to the threshold
     // type. This works out nicely since the union choices have the same binary interface.
-    
+
     CompoundSha256Condition_t *choice = &asn->choice.thresholdSha256;
     choice->cost = cc_getCost(cond);
-    choice->fingerprint.buf = cond->type->fingerprint(cond);
     choice->fingerprint.size = 32;
+    choice->fingerprint.buf = calloc(1, 32);
+    cond->type->fingerprint(cond, choice->fingerprint.buf);
     choice->subtypes = asnSubtypes(cond->type->getSubtypes(cond));
 }
 
@@ -184,7 +193,7 @@ CC *fulfillmentToCC(Fulfillment_t *ffill) {
 
 CC *cc_readFulfillmentBinary(const unsigned char *ffill_bin, size_t ffill_bin_len) {
     CC *cond = 0;
-    unsigned char *buf = malloc(ffill_bin_len);
+    unsigned char *buf = calloc(1,ffill_bin_len);
     Fulfillment_t *ffill = 0;
     asn_dec_rval_t rval = ber_decode(0, &asn_DEF_Fulfillment, (void **)&ffill, ffill_bin, ffill_bin_len);
     if (rval.code != RC_OK) {
@@ -207,6 +216,35 @@ end:
     return cond;
 }
 
+int cc_readFulfillmentBinaryExt(const unsigned char *ffill_bin, size_t ffill_bin_len, CC **ppcc) {
+
+    int error = 0;
+    unsigned char *buf = calloc(1,ffill_bin_len);
+    Fulfillment_t *ffill = 0;
+    asn_dec_rval_t rval = ber_decode(0, &asn_DEF_Fulfillment, (void **)&ffill, ffill_bin, ffill_bin_len);
+    if (rval.code != RC_OK) {
+        error = rval.code;
+        goto end;
+    }
+    // Do malleability check
+    asn_enc_rval_t rc = der_encode_to_buffer(&asn_DEF_Fulfillment, ffill, buf, ffill_bin_len);
+    if (rc.encoded == -1) {
+        fprintf(stderr, "FULFILLMENT NOT ENCODED\n");
+        error = -1;
+        goto end;
+    }
+    if (rc.encoded != ffill_bin_len || 0 != memcmp(ffill_bin, buf, rc.encoded)) {
+        error = (rc.encoded == ffill_bin_len) ? -3 : -2;
+        goto end;
+    }
+    
+    *ppcc = fulfillmentToCC(ffill);
+end:
+    free(buf);
+    if (ffill) ASN_STRUCT_FREE(asn_DEF_Fulfillment, ffill);
+    return error;
+}
+
 
 int cc_visit(CC *cond, CCVisitor visitor) {
     int out = visitor.visit(cond, visitor);
@@ -216,29 +254,36 @@ int cc_visit(CC *cond, CCVisitor visitor) {
     return out;
 }
 
-
 int cc_verify(const struct CC *cond, const unsigned char *msg, size_t msgLength, int doHashMsg,
               const unsigned char *condBin, size_t condBinLength,
               VerifyEval verifyEval, void *evalContext) {
     unsigned char targetBinary[1000];
+    //fprintf(stderr,"in cc_verify cond.%p msg.%p[%d] dohash.%d condbin.%p[%d]\n",cond,msg,(int32_t)msgLength,doHashMsg,condBin,(int32_t)condBinLength);
     const size_t binLength = cc_conditionBinary(cond, targetBinary);
     if (0 != memcmp(condBin, targetBinary, binLength)) {
+        fprintf(stderr,"cc_verify error A\n");
         return 0;
     }
-
     if (!cc_ed25519VerifyTree(cond, msg, msgLength)) {
+        fprintf(stderr,"cc_verify error B\n");
         return 0;
     }
 
     unsigned char msgHash[32];
     if (doHashMsg) sha256(msg, msgLength, msgHash);
     else memcpy(msgHash, msg, 32);
+    //int32_t z;
+    //for (z=0; z<32; z++)
+    //    fprintf(stderr,"%02x",msgHash[z]);
+    //fprintf(stderr," msgHash msglen.%d\n",(int32_t)msgLength);
 
     if (!cc_secp256k1VerifyTreeMsg32(cond, msgHash)) {
+        fprintf(stderr," cc_verify error C\n");
         return 0;
     }
 
     if (!cc_verifyEval(cond, verifyEval, evalContext)) {
+        //fprintf(stderr,"cc_verify error D\n");
         return 0;
     }
     return 1;
@@ -299,5 +344,3 @@ void cc_free(CC *cond) {
         cond->type->free(cond);
     free(cond);
 }
-
-

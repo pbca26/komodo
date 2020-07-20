@@ -3,6 +3,21 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 #ifndef BITCOIN_NET_H
 #define BITCOIN_NET_H
 
@@ -18,6 +33,7 @@
 #include "sync.h"
 #include "uint256.h"
 #include "utilstrencodings.h"
+#include "util.h"
 
 #include <deque>
 #include <stdint.h>
@@ -48,7 +64,9 @@ static const unsigned int MAX_INV_SZ = 50000;
 /** The maximum number of new addresses to accumulate before announcing. */
 static const unsigned int MAX_ADDR_TO_SEND = 1000;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
-static const unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
+static const unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = (_MAX_BLOCK_SIZE + 24); // 24 is msgheader size
+/** Maximum length of strSubVer in `version` message */
+static const unsigned int MAX_SUBVERSION_LENGTH = 256;
 /** -listen default */
 static const bool DEFAULT_LISTEN = true;
 /** The maximum number of entries in mapAskFor */
@@ -56,7 +74,7 @@ static const size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
 /** The maximum number of entries in setAskFor (larger due to getdata latency)*/
 static const size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 /** The maximum number of peer connections to maintain. */
-static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
+static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 384;
 /** The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks). */
 static const int NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 24 * 3;
 
@@ -78,6 +96,9 @@ bool StopNode();
 void SocketSendData(CNode *pnode);
 
 typedef int NodeId;
+
+class CNodeStats;
+void CopyNodeStats(std::vector<CNodeStats>& vstats);
 
 struct CombinerAll
 {
@@ -156,6 +177,9 @@ extern CCriticalSection cs_vAddedNodes;
 extern NodeId nLastNodeId;
 extern CCriticalSection cs_nLastNodeId;
 
+/** Subversion as sent to the P2P network in `version` messages */
+extern std::string strSubVersion;
+
 struct LocalServiceInfo {
     int nScore;
     int nPort;
@@ -184,6 +208,11 @@ public:
     double dPingTime;
     double dPingWait;
     std::string addrLocal;
+    // Address of this peer
+    CAddress addr;
+    // Bind address of our side of the connection
+    // CAddress addrBind; // https://github.com/bitcoin/bitcoin/commit/a7e3c2814c8e49197889a4679461be42254e5c51
+    uint32_t m_mapped_as;
 };
 
 
@@ -255,7 +284,11 @@ public:
     int64_t nLastRecv;
     int64_t nTimeConnected;
     int64_t nTimeOffset;
+    uint32_t prevtimes[16];
+    // Address of this peer
     CAddress addr;
+    // Bind address of our side of the connection
+    // const CAddress addrBind; // https://github.com/bitcoin/bitcoin/commit/a7e3c2814c8e49197889a4679461be42254e5c51
     std::string addrName;
     CService addrLocal;
     int nVersion;
@@ -398,7 +431,7 @@ public:
         if (addr.IsValid() && !addrKnown.contains(addr.GetKey())) {
             if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) {
                 vAddrToSend[insecure_rand() % vAddrToSend.size()] = addr;
-            } else {
+            } else { 
                 vAddrToSend.push_back(addr);
             }
         }
@@ -438,6 +471,7 @@ public:
 
     void PushMessage(const char* pszCommand)
     {
+        //fprintf(stderr,"push.(%s)\n",pszCommand);
         try
         {
             BeginMessage(pszCommand);
@@ -453,6 +487,7 @@ public:
     template<typename T1>
     void PushMessage(const char* pszCommand, const T1& a1)
     {
+        //fprintf(stderr,"push.(%s)\n",pszCommand);
         try
         {
             BeginMessage(pszCommand);
@@ -619,7 +654,7 @@ public:
     static bool Unban(const CSubNet &ip);
     static void GetBanned(std::map<CSubNet, int64_t> &banmap);
 
-    void copyStats(CNodeStats &stats);
+    void copyStats(CNodeStats &stats, const std::vector<bool> &m_asmap);
 
     static bool IsWhitelistedRange(const CNetAddr &ip);
     static void AddWhitelistedRange(const CSubNet &subnet);

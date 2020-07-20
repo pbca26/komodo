@@ -3,6 +3,21 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
@@ -18,6 +33,9 @@
 #include "komodo_defs.h"
 
 #include <stdarg.h>
+#include <sstream>
+#include <vector>
+#include <stdio.h>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
 #include <pthread.h>
@@ -125,7 +143,7 @@ void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAF
 }
 
 // Init
-class CInit
+static class CInit
 {
 public:
     CInit()
@@ -180,6 +198,20 @@ static FILE* fileout = NULL;
 static boost::mutex* mutexDebugLog = NULL;
 static list<string> *vMsgsBeforeOpenLog;
 
+[[noreturn]] void new_handler_terminate()
+{
+    // Rather than throwing std::bad-alloc if allocation fails, terminate
+    // immediately to (try to) avoid chain corruption.
+    // Since LogPrintf may itself allocate memory, set the handler directly
+    // to terminate first.
+    std::set_new_handler(std::terminate);
+    fputs("Error: Out of memory. Terminating.\n", stderr);
+    LogPrintf("Error: Out of memory. Terminating.\n");
+
+    // The log was successful, terminate now.
+    std::terminate();
+};
+
 static int FileWriteStr(const std::string &str, FILE *fp)
 {
     return fwrite(str.data(), 1, str.size(), fp);
@@ -224,7 +256,7 @@ bool LogAcceptCategory(const char* category)
         // This helps prevent issues debugging global destructors,
         // where mapMultiArgs might be deleted before another
         // global destructor calls LogPrint()
-        static boost::thread_specific_ptr<set<string> > ptrCategory;
+        static boost::thread_specific_ptr<set<string>> ptrCategory;
         if (ptrCategory.get() == NULL)
         {
             const vector<string>& categories = mapMultiArgs["-debug"];
@@ -362,6 +394,60 @@ void ParseParameters(int argc, const char* const argv[])
     }
 }
 
+// split string using by space or comma as a delimiter char
+void SplitStr(const std::string& strVal, std::vector<std::string> &outVals)
+{
+    stringstream ss(strVal);
+    
+    while (!ss.eof()) {
+        int c;
+        std::string str;
+
+        while (std::isspace(ss.peek()))
+            ss.ignore();
+
+        while ((c = ss.get()) != EOF && !std::isspace(c) && c != ',')
+            str += c;
+
+        if (!str.empty())
+            outVals.push_back(str);
+    }
+}
+
+void Split(const std::string& strVal, int32_t outsize, uint64_t *outVals, const uint64_t nDefault)
+{
+    stringstream ss(strVal);
+    vector<uint64_t> vec;
+
+    uint64_t i, nLast, numVals = 0;
+
+    while ( ss.peek() == ' ' )
+        ss.ignore();
+
+    while ( ss >> i )
+    {
+        outVals[numVals] = i;
+        numVals += 1;
+
+        while ( ss.peek() == ' ' )
+            ss.ignore();
+        if ( ss.peek() == ',' )
+            ss.ignore();
+        while ( ss.peek() == ' ' )
+            ss.ignore();
+    }
+
+    if ( numVals > 0 )
+        nLast = outVals[numVals - 1];
+    else
+        nLast = nDefault;
+
+    for ( i = numVals; i < outsize; i++ )
+    {
+        outVals[i] = nLast;
+    }
+}
+
 std::string GetArg(const std::string& strArg, const std::string& strDefault)
 {
     if (mapArgs.count(strArg))
@@ -449,8 +535,10 @@ boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
     char symbol[KOMODO_ASSETCHAIN_MAXLEN];
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOL[0] != 0 ){
         strcpy(symbol,ASSETCHAINS_SYMBOL);
+    }
+    
     else symbol[0] = 0;
     // Windows < Vista: C:\Documents and Settings\Username\Application Data\Zcash
     // Windows >= Vista: C:\Users\Username\AppData\Roaming\Zcash
@@ -503,11 +591,10 @@ static boost::filesystem::path ZC_GetBaseParamsDir()
     // Windows >= Vista: C:\Users\Username\AppData\Roaming\ZcashParams
     // Mac: ~/Library/Application Support/ZcashParams
     // Unix: ~/.zcash-params
+    fs::path pathRet;
 #ifdef _WIN32
-    // Windows
     return GetSpecialFolderPath(CSIDL_APPDATA) / "ZcashParams";
 #else
-    fs::path pathRet;
     char* pszHome = getenv("HOME");
     if (pszHome == NULL || strlen(pszHome) == 0)
         pathRet = fs::path("/");
@@ -573,8 +660,9 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 
     // This can be called during exceptions by LogPrintf(), so we cache the
     // value so we don't have to do memory allocations after that.
-    if (!path.empty())
+    if (!path.empty()){
         return path;
+    }
 
     if (mapArgs.count("-datadir")) {
         path = fs::system_complete(mapArgs["-datadir"]);
@@ -603,8 +691,9 @@ void ClearDatadirCache()
 boost::filesystem::path GetConfigFile()
 {
     char confname[512];
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( !mapArgs.count("-conf") && ASSETCHAINS_SYMBOL[0] != 0 ){
         sprintf(confname,"%s.conf",ASSETCHAINS_SYMBOL);
+    }
     else
     {
 #ifdef __APPLE__
@@ -614,19 +703,21 @@ boost::filesystem::path GetConfigFile()
 #endif
     }
     boost::filesystem::path pathConfigFile(GetArg("-conf",confname));
-    if (!pathConfigFile.is_complete())
+    if (!pathConfigFile.is_complete()){
         pathConfigFile = GetDataDir(false) / pathConfigFile;
+    }
 
+    //printf("DEBUG - util.cpp:710 correct pathConfigFile: %s\n",GetConfigFile().string().c_str());
     return pathConfigFile;
 }
 
 void ReadConfigFile(map<string, string>& mapSettingsRet,
                     map<string, vector<string> >& mapMultiSettingsRet)
 {
+
     boost::filesystem::ifstream streamConfig(GetConfigFile());
     if (!streamConfig.good())
         throw missing_zcash_conf();
-
     set<string> setOptions;
     setOptions.insert("*");
 
@@ -644,9 +735,8 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
     }
     // If datadir is changed in .conf file:
     ClearDatadirCache();
-    extern uint16_t BITCOIND_PORT;
-    BITCOIND_PORT = GetArg("-rpcport",BaseParams().RPCPort());
-    //fprintf(stderr,"from conf file %s RPC %u, used to be %u\n",ASSETCHAINS_SYMBOL,BITCOIND_PORT,BITCOIND_PORT);
+    extern uint16_t BITCOIND_RPCPORT;
+    BITCOIND_RPCPORT = GetArg("-rpcport",BaseParams().RPCPort());
 }
 
 #ifndef _WIN32
@@ -934,8 +1024,9 @@ std::string LicenseInfo()
     return "\n" +
            FormatParagraph(strprintf(_("Copyright (C) 2009-%i The Bitcoin Core Developers"), COPYRIGHT_YEAR)) + "\n" +
            FormatParagraph(strprintf(_("Copyright (C) 2015-%i The Zcash Developers"), COPYRIGHT_YEAR)) + "\n" +
-        FormatParagraph(strprintf(_("Copyright (C) 2015-%i jl777 and SuperNET developers"), COPYRIGHT_YEAR)) + "\n" +
-        "\n" +
+           FormatParagraph(strprintf(_("Copyright (C) 2015-%i jl777 and SuperNET developers"), COPYRIGHT_YEAR)) + "\n" +
+           FormatParagraph(strprintf(_("Copyright (C) 2018-%i The Verus developers"), COPYRIGHT_YEAR)) + "\n" +
+           "\n" +
            FormatParagraph(_("This is experimental software.")) + "\n" +
            "\n" +
            FormatParagraph(_("Distributed under the MIT software license, see the accompanying file COPYING or <http://www.opensource.org/licenses/mit-license.php>.")) + "\n" +

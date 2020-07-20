@@ -1,10 +1,24 @@
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
 
 #include "asn/Condition.h"
 #include "asn/Fulfillment.h"
 #include "asn/PrefixFingerprintContents.h"
 #include "asn/OCTET_STRING.h"
-#include "include/cJSON.h"
-#include "cryptoconditions.h"
+//#include <cJSON.h>
+//#include "../include/cryptoconditions.h"
 
 
 struct CCType CC_PrefixType;
@@ -12,7 +26,7 @@ struct CCType CC_PrefixType;
 
 static int prefixVisitChildren(CC *cond, CCVisitor visitor) {
     size_t prefixedLength = cond->prefixLength + visitor.msgLength;
-    unsigned char *prefixed = malloc(prefixedLength);
+    unsigned char *prefixed = calloc(1,prefixedLength);
     memcpy(prefixed, cond->prefix, cond->prefixLength);
     memcpy(prefixed + cond->prefixLength, visitor.msg, visitor.msgLength);
     visitor.msg = prefixed;
@@ -23,12 +37,12 @@ static int prefixVisitChildren(CC *cond, CCVisitor visitor) {
 }
 
 
-static unsigned char *prefixFingerprint(const CC *cond) {
+static void prefixFingerprint(const CC *cond, uint8_t *out) {
     PrefixFingerprintContents_t *fp = calloc(1, sizeof(PrefixFingerprintContents_t));
-    asnCondition(cond->subcondition, &fp->subcondition); // TODO: check asnCondition for safety
+    asnCondition(cond->subcondition, &fp->subcondition);
     fp->maxMessageLength = cond->maxMessageLength;
     OCTET_STRING_fromBuf(&fp->prefix, cond->prefix, cond->prefixLength);
-    return hashFingerprintContents(&asn_DEF_PrefixFingerprintContents, fp);
+    hashFingerprintContents(&asn_DEF_PrefixFingerprintContents, fp, out);
 }
 
 

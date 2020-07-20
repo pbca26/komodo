@@ -1,8 +1,21 @@
-#include <Condition.h>
-#include <Fulfillment.h>
-#include "include/cJSON.h"
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
+#include "asn/Condition.h"
+#include "asn/Fulfillment.h"
 #include "asn/asn_application.h"
-#include "cryptoconditions.h"
 
 #ifndef INTERNAL_H
 #define INTERNAL_H
@@ -13,7 +26,7 @@ extern "C" {
 #endif
 
 
-#define BUF_SIZE 1024 * 1024
+#define BUF_SIZE 4096 
 
 typedef char bool;
 
@@ -26,7 +39,7 @@ typedef struct CCType {
     char name[100];
     Condition_PR asnType;
     int (*visitChildren)(CC *cond, CCVisitor visitor);
-    unsigned char *(*fingerprint)(const CC *cond);
+    void (*fingerprint)(const CC *cond, uint8_t *fp);
     unsigned long (*getCost)(const CC *cond);
     uint32_t (*getSubtypes)(const  CC *cond);
     CC *(*fromJSON)(const cJSON *params, char *err);
@@ -41,8 +54,8 @@ typedef struct CCType {
 /*
  * Globals
  */
-struct CCType *CCTypeRegistry[32];
-int CCTypeRegistryLength;
+extern struct CCType *CCTypeRegistry[];
+extern int CCTypeRegistryLength;
 
 
 /*
@@ -62,7 +75,7 @@ struct CCType *getTypeByAsnEnum(Condition_PR present);
  */
 unsigned char *base64_encode(const unsigned char *data, size_t input_length);
 unsigned char *base64_decode(const unsigned char *data_, size_t *output_length);
-unsigned char *hashFingerprintContents(asn_TYPE_descriptor_t *asnType, void *fp);
+void hashFingerprintContents(asn_TYPE_descriptor_t *asnType, void *fp, uint8_t* out);
 void dumpStr(unsigned char *str, size_t len);
 int checkString(const cJSON *value, char *key, char *err);
 int checkDecodeBase64(const cJSON *value, char *key, char *err, unsigned char **data, size_t *size);

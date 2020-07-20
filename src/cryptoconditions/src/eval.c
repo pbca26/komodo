@@ -1,19 +1,32 @@
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 #include "asn/Condition.h"
 #include "asn/Fulfillment.h"
 #include "asn/EvalFulfillment.h"
 #include "asn/OCTET_STRING.h"
-#include "cryptoconditions.h"
+//#include "../include/cryptoconditions.h"
 #include "internal.h"
-#include "include/cJSON.h"
+//#include <cJSON.h>
 
 
 struct CCType CC_EvalType;
 
 
-static unsigned char *evalFingerprint(const CC *cond) {
-    unsigned char *hash = calloc(1, 32);
-    sha256(cond->code, cond->codeLength, hash);
-    return hash;
+static void evalFingerprint(const CC *cond, uint8_t *out) {
+    sha256(cond->code, cond->codeLength, out);
 }
 
 
@@ -53,7 +66,7 @@ static CC *evalFromFulfillment(const Fulfillment_t *ffill) {
 
     OCTET_STRING_t octets = eval->code;
     cond->codeLength = octets.size;
-    cond->code = malloc(octets.size);
+    cond->code = calloc(1,octets.size);
     memcpy(cond->code, octets.buf, octets.size);
 
     return cond;
@@ -89,7 +102,7 @@ static uint32_t evalSubtypes(const CC *cond) {
  */
 int jsonVerifyEval(CC *cond, void *context) {
     if (cond->codeLength == 5 && 0 == memcmp(cond->code, "TEST", 4)) {
-        return cond->code[5];
+        return cond->code[4];
     }
     fprintf(stderr, "Cannot verify eval; user function unknown\n");
     return 0;

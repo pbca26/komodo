@@ -1,10 +1,24 @@
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
 
 #include "asn/Condition.h"
 #include "asn/Fulfillment.h"
 #include "asn/OCTET_STRING.h"
-#include "include/cJSON.h"
+//#include <cJSON.h>
 #include "include/sha256.h"
-#include "cryptoconditions.h"
+//#include "../include/cryptoconditions.h"
 
 
 struct CCType CC_PreimageType;
@@ -30,10 +44,8 @@ static unsigned long preimageCost(const CC *cond) {
 }
 
 
-static unsigned char *preimageFingerprint(const CC *cond) {
-    unsigned char *hash = calloc(1, 32);
-    sha256(cond->preimage, cond->preimageLength, hash);
-    return hash;
+static void preimageFingerprint(const CC *cond, uint8_t *out) {
+    sha256(cond->preimage, cond->preimageLength, out);
 }
 
 

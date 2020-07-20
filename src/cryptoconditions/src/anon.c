@@ -1,10 +1,24 @@
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
 
 #include "asn/Condition.h"
 #include "asn/Fulfillment.h"
 #include "asn/PrefixFingerprintContents.h"
 #include "asn/OCTET_STRING.h"
-#include "include/cJSON.h"
-#include "cryptoconditions.h"
+//#include <cJSON.h>
+//#include "../include/cryptoconditions.h"
 
 
 struct CCType CC_AnonType;
@@ -39,10 +53,8 @@ static void anonToJSON(const CC *cond, cJSON *params) {
 }
 
 
-static unsigned char *anonFingerprint(const CC *cond) {
-    unsigned char *out = calloc(1, 32);
+static void anonFingerprint(const CC *cond, uint8_t *out) {
     memcpy(out, cond->fingerprint, 32);
-    return out;
 }
 
 

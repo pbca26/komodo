@@ -2,6 +2,21 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+/******************************************************************************
+ * Copyright © 2014-2019 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * SuperNET software, including this file may be copied, modified, propagated *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 #ifndef BITCOIN_NETBASE_H
 #define BITCOIN_NETBASE_H
 
@@ -11,6 +26,7 @@
 
 #include "compat.h"
 #include "serialize.h"
+#include "util/asmap.h"
 
 #include <stdint.h>
 #include <string>
@@ -32,7 +48,8 @@ enum Network
     NET_UNROUTABLE = 0,
     NET_IPV4,
     NET_IPV6,
-    NET_TOR,
+    NET_ONION,
+    NET_INTERNAL,
 
     NET_MAX,
 };
@@ -76,6 +93,7 @@ class CNetAddr
         bool IsTor() const;
         bool IsLocal() const;
         bool IsRoutable() const;
+        bool IsInternal() const;
         bool IsValid() const;
         bool IsMulticast() const;
         enum Network GetNetwork() const;
@@ -84,7 +102,19 @@ class CNetAddr
         unsigned int GetByte(int n) const;
         uint64_t GetHash() const;
         bool GetInAddr(struct in_addr* pipv4Addr) const;
-        std::vector<unsigned char> GetGroup() const;
+        uint32_t GetNetClass() const;
+
+        //! For IPv4, mapped IPv4, SIIT translated IPv4, Teredo, 6to4 tunneled addresses, return the relevant IPv4 address as a uint32.
+        uint32_t GetLinkedIPv4() const;
+        //! Whether this address has a linked IPv4 address (see GetLinkedIPv4()).
+        bool HasLinkedIPv4() const;
+
+        // The AS on the BGP path to the node we use to diversify
+        // peers in AddrMan bucketing based on the AS infrastructure.
+        // The ip->AS mapping depends on how asmap is constructed.
+        uint32_t GetMappedAS(const std::vector<bool> &asmap) const;
+
+        std::vector<unsigned char> GetGroup(const std::vector<bool> &asmap) const;
         int GetReachabilityFrom(const CNetAddr *paddrPartner = NULL) const;
 
         CNetAddr(const struct in6_addr& pipv6Addr);
@@ -97,7 +127,7 @@ class CNetAddr
         ADD_SERIALIZE_METHODS;
 
         template <typename Stream, typename Operation>
-        inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        inline void SerializationOp(Stream& s, Operation ser_action) {
             READWRITE(FLATDATA(ip));
         }
 
@@ -162,7 +192,7 @@ class CService : public CNetAddr
         ADD_SERIALIZE_METHODS;
 
         template <typename Stream, typename Operation>
-        inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        inline void SerializationOp(Stream& s, Operation ser_action) {
             READWRITE(FLATDATA(ip));
             unsigned short portN = htons(port);
             READWRITE(FLATDATA(portN));
@@ -207,5 +237,7 @@ bool SetSocketNonBlocking(SOCKET& hSocket, bool fNonBlocking);
  * Convert milliseconds to a struct timeval for e.g. select.
  */
 struct timeval MillisToTimeval(int64_t nTimeout);
+
+bool SanityCheckASMap(const std::vector<bool>& asmap);
 
 #endif // BITCOIN_NETBASE_H
