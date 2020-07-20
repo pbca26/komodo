@@ -874,7 +874,7 @@ void komodo_nSPVreq(CNode *pfrom,std::vector<uint8_t> request) // received a req
     {
         if ( (ind= request[0]>>1) >= sizeof(pfrom->prevtimes)/sizeof(*pfrom->prevtimes) )
             ind = (int32_t)(sizeof(pfrom->prevtimes)/sizeof(*pfrom->prevtimes)) - 1;
-        if (  NSPV_NORATELIMIT != 0 || pfrom->prevtimes[ind] > timestamp )
+        if (  NSPV_NO_RATE_LIMIT != 0 || pfrom->prevtimes[ind] > timestamp )
             fprintf(stderr,"NSPV NO RATE LIMIT\n");
             pfrom->prevtimes[ind] = 0;
         if ( request[0] == NSPV_INFO ) // info
