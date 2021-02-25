@@ -302,10 +302,10 @@ uint8_t Assetsv2CCpriv[32] = { 0x46, 0x58, 0x3b, 0x18, 0xee, 0x16, 0x63, 0x51, 0
 // TestNFT 
 #define FUNCNAME IsTestNFTInput
 #define EVALCODE EVAL_TESTNFT
-const char *TestNFTCCaddr = "RAAZVT4PY8QMYBJ3SEYzUqf9Q59uRGAnxM";
-const char *TestNFTNormaladdr = "RAAZVT4PY8QMYBJ3SEYzUqf9Q59uRGAnxM";
-char TestNFTCChexstr[67] = { "03e534ee483913a68d0faeec60c747013ce4387ce61bddda2c5bd6398a7f6fb40f" };
-uint8_t TestNFTCCpriv[32] = { 0x46, 0x58, 0x3b, 0x18, 0xee, 0x16, 0x63, 0x51, 0x6f, 0x60, 0x6e, 0x09, 0xdf, 0x9d, 0x27, 0xc8, 0xa7, 0xa2, 0x72, 0xa5, 0xd4, 0x6a, 0x9b, 0xcb, 0xd5, 0x4f, 0x7d, 0x1c, 0xb1, 0x2e, 0x63, 0x21 };
+//const char *TestNFTCCaddr = "";
+//const char *TestNFTNormaladdr = "RAAZVT4PY8QMYBJ3SEYzUqf9Q59uRGAnxM";
+//char TestNFTCChexstr[67] = { "03e534ee483913a68d0faeec60c747013ce4387ce61bddda2c5bd6398a7f6fb40f" };
+//uint8_t TestNFTCCpriv[32] = {  };
 #include "CCcustom.inc"
 #undef FUNCNAME
 #undef EVALCODE
@@ -535,10 +535,10 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             break;
 
         case EVAL_TESTNFT:
-            strcpy(cp->unspendableCCaddr,TestNFTCCaddr);
-            strcpy(cp->normaladdr,TestNFTNormaladdr);
-            strcpy(cp->CChexstr,TestNFTCChexstr);
-            memcpy(cp->CCpriv,TestNFTCCpriv,32);
+            //strcpy(cp->unspendableCCaddr,TestNFTCCaddr);
+            //strcpy(cp->normaladdr,TestNFTNormaladdr);
+            //strcpy(cp->CChexstr,TestNFTCChexstr);
+            //memcpy(cp->CCpriv,TestNFTCCpriv,32);
             cp->validate = TestNFTValidate;
             cp->ismyvin = IsTestNFTInput;
             break;
