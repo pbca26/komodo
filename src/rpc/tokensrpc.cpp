@@ -436,7 +436,7 @@ UniValue tokentransfermany(const std::string& name, const UniValue& params, bool
         cpTokens->evalcodeNFT = vnftData.size() > 0 ? vnftData[0] : 0;
         GetTokensCCaddress(cpTokens, tokenaddr, mypk, V::IsMixed());
 
-        UniValue addtxResult = TokenAddTransferVout<V>(mtx, cpTokens, destpk, tokenid, tokenaddr, { destpk }, {probeCond, mypriv}, amount, false);
+        UniValue addtxResult = TokenAddTransferVout<V>(mtx, cpTokens, remotepk, tokenid, tokenaddr, { destpk }, {probeCond, mypriv}, amount, false);
         memset(mypriv, '\0', sizeof(mypriv));
         if (ResultIsError(addtxResult)) 
             return MakeResultError( ResultGetError(addtxResult) + " " + tokenid.GetHex() );
