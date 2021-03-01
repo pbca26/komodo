@@ -559,7 +559,7 @@ UniValue tokencancelbid(const std::string& name, const UniValue& params, bool fH
     UniValue result(UniValue::VOBJ); std::string hex; int32_t i; uint256 tokenid,bidtxid;
     CCerror.clear();
     if (fHelp || params.size() != 2)
-        throw runtime_error("tokenid bidtxid\n");
+        throw runtime_error(name + " tokenid bidtxid\n");
 
     if (ensure_CCrequirements(A::EvalCode()) < 0 || ensure_CCrequirements(T::EvalCode()) < 0)
         throw runtime_error(CC_REQUIREMENTS_MSG);
@@ -662,7 +662,7 @@ UniValue tokenask(const std::string& name, const UniValue& params, bool fHelp, c
 
     CCerror.clear();
     if (fHelp || params.size() != 3)
-        throw runtime_error("tokenask numtokens tokenid price\n");
+        throw runtime_error(name + " numtokens tokenid price\n");
     if (ensure_CCrequirements(A::EvalCode()) < 0 || ensure_CCrequirements(T::EvalCode()) < 0)
         throw runtime_error(CC_REQUIREMENTS_MSG);
     
@@ -883,26 +883,26 @@ static const CRPCCommand commands[] =
   //  -------------- ------------------------  -----------------------  ----------
      // tokens & assets
 	{ "tokens",       "assetsaddress",    &assetsaddress,      true },
-	{ "tokens",       "assetsv2address",    &assetsv2address,      true },
+	{ "tokens v2",       "assetsv2address",    &assetsv2address,      true },
 
     { "tokens",       "tokeninfo",        &tokeninfo,         true },
-    { "tokens",       "tokenv2info",      &tokenv2info,         true },
+    { "tokens v2",       "tokenv2info",      &tokenv2info,         true },
     { "tokens",       "tokenlist",        &tokenlist,         true },
-    { "tokens",       "tokenv2list",      &tokenv2list,         true },
+    { "tokens v2",       "tokenv2list",      &tokenv2list,         true },
     { "tokens",       "tokenorders",      &tokenorders,       true },
-    { "tokens",       "tokenv2orders",      &tokenv2orders,       true },
+    { "tokens v2",       "tokenv2orders",      &tokenv2orders,       true },
     { "tokens",       "mytokenorders",    &mytokenorders,     true },
-    { "tokens",       "mytokenv2orders",    &mytokenv2orders,     true },
+    { "tokens v2",       "mytokenv2orders",    &mytokenv2orders,     true },
     { "tokens",       "tokenaddress",     &tokenaddress,      true },
-    { "tokens",       "tokenv2address",   &tokenv2address,      true },
+    { "tokens v2",       "tokenv2address",   &tokenv2address,      true },
     { "tokens",       "tokenbalance",     &tokenbalance,      true },
-    { "tokens",       "tokenv2balance",   &tokenv2balance,      true },
+    { "tokens v2",       "tokenv2balance",   &tokenv2balance,      true },
     { "tokens",       "tokencreate",      &tokencreate,       true },
-    { "tokens",       "tokenv2create",    &tokenv2create,       true },
+    { "tokens v2",       "tokenv2create",    &tokenv2create,       true },
     { "tokens",       "tokentransfer",    &tokentransfer,     true },
-    { "tokens",       "tokenv2transfer",     &tokenv2transfer,     true },
+    { "tokens v2",       "tokenv2transfer",     &tokenv2transfer,     true },
     { "tokens",       "tokentransfermany",   &tokentransfermany,     true },
-    { "tokens",       "tokenv2transfermany", &tokenv2transfermany,     true },
+    { "tokens v2",       "tokenv2transfermany", &tokenv2transfermany,     true },
     { "tokens",       "tokenbid",         &tokenbid,          true },
     { "tokens",       "tokencancelbid",   &tokencancelbid,    true },
     { "tokens",       "tokenfillbid",     &tokenfillbid,      true },
@@ -910,13 +910,13 @@ static const CRPCCommand commands[] =
     //{ "tokens",       "tokenswapask",     &tokenswapask,      true },
     { "tokens",       "tokencancelask",   &tokencancelask,    true },
     { "tokens",       "tokenfillask",     &tokenfillask,      true },
-    { "tokens",       "tokenv2bid",         &tokenv2bid,          true },
-    { "tokens",       "tokenv2cancelbid",   &tokenv2cancelbid,    true },
-    { "tokens",       "tokenv2fillbid",     &tokenv2fillbid,      true },
-    { "tokens",       "tokenv2ask",         &tokenv2ask,          true },
+    { "tokens v2",       "tokenv2bid",         &tokenv2bid,          true },
+    { "tokens v2",       "tokenv2cancelbid",   &tokenv2cancelbid,    true },
+    { "tokens v2",       "tokenv2fillbid",     &tokenv2fillbid,      true },
+    { "tokens v2",       "tokenv2ask",         &tokenv2ask,          true },
     //{ "tokens",       "tokenswapask",     &tokenswapask,      true },
-    { "tokens",       "tokenv2cancelask",   &tokenv2cancelask,    true },
-    { "tokens",       "tokenv2fillask",     &tokenv2fillask,      true },
+    { "tokens v2",       "tokenv2cancelask",   &tokenv2cancelask,    true },
+    { "tokens v2",       "tokenv2fillask",     &tokenv2fillask,      true },
     //{ "tokens",       "tokenfillswap",    &tokenfillswap,     true },
     { "tokens",       "tokenconvert", &tokenconvert, true },
 };
