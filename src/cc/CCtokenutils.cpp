@@ -34,11 +34,19 @@
 // return false if v0 is still active  
 bool TokensIsVer1Active(const Eval *eval)
 {
+    static const char *chains_only_version0[] = {
+        "WSB",
+    };
+
     static const char *chains_only_version1[] = {
     //    "RFOXLIKE",
     //    "DIMXY11",
     //    "DIMXY14", "DIMXY14_2"
     };
+
+    for (auto const name : chains_only_version0)
+        if (strcmp(name, ASSETCHAINS_SYMBOL) == 0)
+            return false;
 
     bool isTimev1 = true;
     if (eval == NULL)   {
