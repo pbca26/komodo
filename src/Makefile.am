@@ -321,7 +321,8 @@ libbitcoin_server_a_SOURCES = \
   cc/pricesfeed.cpp \
   cc/priceslibs/cjsonpointer.cpp \
   cc/kogs.cpp \
-  cc/CCTestNFT.cpp \
+  cc/CCNFTEmpty.cpp \
+  cc/CCNFTData.cpp \
   chain.cpp \
   checkpoints.cpp \
   fs.cpp \
