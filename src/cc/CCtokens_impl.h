@@ -390,9 +390,9 @@ std::string TokenTransfer(CAmount txfee, uint256 tokenid, CPubKey destpubkey, CA
 }
 
 // returns token creation signed raw tx
-// params: txfee amount, token amount, token name and description, optional NFT data, 
+// params: txfee amount, token amount, token name and description, optional NFT data, optional eval code of a cc to validate NFT
 template <class V>
-UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensupply, std::string name, std::string description, vscript_t nonfungibleData, uint8_t additionalMarkerEvalCode, bool addTxInMemory)
+UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensupply, std::string name, std::string description, vscript_t nonfungibleData, uint8_t additionalMarkerEvalCode, uint8_t nftEvalCode, bool useMempool)
 {
 	CMutableTransaction mtx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), komodo_nextheight());
     struct CCcontract_info *cp, C;
@@ -410,10 +410,10 @@ UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensup
     }
 
 	cp = CCinit(&C, V::EvalCode());
-	if (name.size() > 32 || description.size() > 4096)  // this is also checked on rpc level
+    if (name.size() > 32 || description.size() > MAX_SCRIPT_ELEMENT_SIZE)  // this is also checked on rpc level
 	{
         LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "name len=" << name.size() << " or description len=" << description.size() << " is too big" << std::endl);
-        CCerror = "name should be <= 32, description should be <= 4096";
+        CCerror = "name should be <= 32, description should be <= " + std::to_string(MAX_SCRIPT_ELEMENT_SIZE);
 		return NullUniValue;
 	}
 	if (txfee == 0)
@@ -433,7 +433,7 @@ UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensup
     CAmount totalInputs;
     // always add inputs only from the mypk passed in the param to prove the token creator has the token originator pubkey
     // This what the AddNormalinputsRemote does (and it is not necessary that this is done only for nspv calls):
-	if ((totalInputs = AddNormalinputsRemote(mtx, mypk, tokensupply + txfeeCount * txfee, 0x10000, addTxInMemory)) > 0)
+	if ((totalInputs = AddNormalinputsRemote(mtx, mypk, tokensupply + txfeeCount * txfee, 0x10000, useMempool)) > 0)
 	{
         CAmount mypkInputs = TotalPubkeyNormalInputs(mtx, mypk);  
         if (mypkInputs < tokensupply) {     // check that the token amount is really issued with mypk (because in the wallet there may be some other privkeys)
@@ -442,8 +442,8 @@ UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensup
         }
 
         uint8_t destEvalCode = V::EvalCode();
-        if( nonfungibleData.size() > 0 )
-            destEvalCode = nonfungibleData.begin()[0];
+        if( nftEvalCode != 0 )
+            destEvalCode = nftEvalCode;
 
         // NOTE: we should prevent spending fake-tokens from this marker in IsTokenvout():
         mtx.vout.push_back(V::MakeCC1vout(V::EvalCode(), txfee, GetUnspendable(cp, NULL)));            // new marker to token cc addr, burnable and validated, vout pos now changed to 0 (from 1)
@@ -462,11 +462,6 @@ UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensup
             CCerror = "couldnt finalize token tx";
             return NullUniValue;
         }
-        if (addTxInMemory)
-        {
-            // add tx to in-mem array to use in subsequent AddNormalinputs()
-            // LockUtxoInMemory::AddInMemoryTransaction(mtx);
-        }
         return sigData;
 	}
 
@@ -475,10 +470,10 @@ UniValue CreateTokenExt(const CPubKey &remotepk, CAmount txfee, CAmount tokensup
 }
 
 template <class V>
-std::string CreateTokenLocal(CAmount txfee, CAmount tokensupply, std::string name, std::string description, vscript_t nonfungibleData)
+std::string CreateTokenLocal(CAmount txfee, CAmount tokensupply, std::string name, std::string description, vscript_t nonfungibleData, uint8_t nftEvalCode)
 {
     CPubKey nullpk = CPubKey();
-    UniValue sigData = CreateTokenExt<V>(nullpk, txfee, tokensupply, name, description, nonfungibleData, 0, true); //TODO: temp true, set back to false
+    UniValue sigData = CreateTokenExt<V>(nullpk, txfee, tokensupply, name, description, nonfungibleData, 0, nftEvalCode, false); 
     return sigData[JSON_HEXTX].getValStr();
 }
 
