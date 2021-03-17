@@ -33,7 +33,6 @@
 #include "CCtokens.h"
 #include "CCImportGateway.h"
 #include "CCKogs.h"
-#include "CCNFTEmpty.h"
 #include "CCNFTData.h"
 
 
@@ -301,17 +300,6 @@ uint8_t Assetsv2CCpriv[32] = { 0x46, 0x58, 0x3b, 0x18, 0xee, 0x16, 0x63, 0x51, 0
 #undef FUNCNAME
 #undef EVALCODE
 
-// EmptyNFT 
-#define FUNCNAME IsNFTEmptyInput
-#define EVALCODE EVAL_NFTEMPTY
-//const char *TestNFTCCaddr = "";
-//const char *TestNFTNormaladdr = "RAAZVT4PY8QMYBJ3SEYzUqf9Q59uRGAnxM";
-//char TestNFTCChexstr[67] = { "03e534ee483913a68d0faeec60c747013ce4387ce61bddda2c5bd6398a7f6fb40f" };
-//uint8_t TestNFTCCpriv[32] = {  };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
 // ParamNFT 
 #define FUNCNAME IsNFTDataInput
 #define EVALCODE EVAL_NFTDATA
@@ -541,11 +529,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,Assetsv2CCpriv,32);
             cp->validate = Assetsv2Validate;
             cp->ismyvin = IsAssetsv2Input;
-            break;
-
-        case EVAL_NFTEMPTY:
-            cp->validate = NFTEmptyValidate;
-            cp->ismyvin = IsNFTEmptyInput;
             break;
 
         case EVAL_NFTDATA:
