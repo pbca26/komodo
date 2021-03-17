@@ -25,12 +25,12 @@ enum nftFieldId : uint8_t {
 
 enum nftFieldType : uint8_t {
     NFTTYP_INVALID = 0x0, 
-    NFTTYP_UINT32 = 0x1, 
+    NFTTYP_COMPACTSIZE = 0x1, 
     NFTTYP_VARBUFFER = 0x2 
 };
 
 static const std::map<nftFieldId, nftFieldType> nftFieldDesc = {
-    { NFTFLD_ID, NFTTYP_UINT32 },
+    { NFTFLD_ID, NFTTYP_COMPACTSIZE },
     { NFTFLD_URL, NFTTYP_VARBUFFER },
 };
 
@@ -41,7 +41,7 @@ static bool ValidateNftData(const vuint8_t &vdata)
     if (vdata.size() > 0 && vdata[0] == EVAL_NFTDATA) {
         uint8_t evalCode;
         uint8_t id;
-        uint32_t uint32Value;
+        uint64_t uint64Value;
         vuint8_t vuint8Value;
         bool hasDuplicates = false;
 
@@ -51,13 +51,13 @@ static bool ValidateNftData(const vuint8_t &vdata)
                 ss >> id; 
                 auto itDesc = nftFieldDesc.find((nftFieldId)id);
                 switch(itDesc != nftFieldDesc.end() ? itDesc->second : NFTTYP_INVALID) {
-                    case NFTTYP_UINT32:
-                        //std::cerr << "parsing uint32Value" << std::endl;
-                        ss >> uint32Value;
-                        //std::cerr << "uint32Value value=" << uint32Value << std::endl;
+                    case NFTTYP_COMPACTSIZE:
+                        //std::cerr << "parsing compactsize" << std::endl;
+                        ss >> COMPACTSIZE(uint64Value);
+                        //std::cerr << "compactsize value=" << uint64Value << std::endl;
                         break;
                     case NFTTYP_VARBUFFER:
-                        //std::cerr << "parsing vuint8" << std::endl;
+                        //std::cerr << "parsing varbuffer" << std::endl;
                         ss >> vuint8Value;
                         break;
                     default:
