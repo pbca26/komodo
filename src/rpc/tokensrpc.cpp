@@ -268,8 +268,8 @@ static UniValue tokencreate(const std::string& fname, const UniValue& params, bo
 
     CCerror.clear();
 
-    if ( fHelp || params.size() > 5 || params.size() < 2 )
-        throw runtime_error(fname + " name supply [description][nft data][nft evalcode]\n");
+    if ( fHelp || params.size() > 4 || params.size() < 2 )
+        throw runtime_error(fname + " name supply [description][nft data]\n");
     if ( ensure_CCrequirements(V::EvalCode()) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     
@@ -292,24 +292,16 @@ static UniValue tokencreate(const std::string& fname, const UniValue& params, bo
             return MakeResultError("Token description must be <= " + std::to_string(MAX_SCRIPT_ELEMENT_SIZE));
     }
     
-    if (params.size() == 4)    {
+    if (params.size() >= 4)    {
         nonfungibleData = ParseHex(params[3].get_str());
-        if (nonfungibleData.size() > MAX_SCRIPT_ELEMENT_SIZE) // opret limit
+        if (nonfungibleData.size() > MAX_SCRIPT_ELEMENT_SIZE) // script element limit
             return MakeResultError("Non-fungible data size must be <= " + std::to_string(MAX_SCRIPT_ELEMENT_SIZE));
         
         if( nonfungibleData.empty() ) 
             return MakeResultError("Non-fungible data incorrect");
     }
 
-    uint8_t nftEvalCode = 0;
-    if (params.size() == 5)    {
-        int evalCode = atoi(params[4].get_str());
-        if (evalCode < 0 || evalCode > 0xFF) // opret limit
-            return MakeResultError("invalid nft evalcode");
-        nftEvalCode = (uint8_t)evalCode;
-    }
-
-    hextx = CreateTokenLocal<V>(0, supply, name, description, nonfungibleData, nftEvalCode);
+    hextx = CreateTokenLocal<V>(0, supply, name, description, nonfungibleData);
     RETURN_IF_ERROR(CCerror);
 
     if( hextx.size() > 0 )     

@@ -43,28 +43,31 @@ static bool ValidateNftData(const vuint8_t &vdata)
         uint8_t id;
         uint64_t uint64Value;
         vuint8_t vuint8Value;
+
+        bool invalidFieldType = false;
         bool hasDuplicates = false;
 
-        if(E_UNMARSHAL(vdata, ss >> evalCode;
-            bool stop = false;
+        if(E_UNMARSHAL(vdata, ss >> evalCode; // evalcode in the first byte
             while(!ss.eof()) {
                 ss >> id; 
                 auto itDesc = nftFieldDesc.find((nftFieldId)id);
                 switch(itDesc != nftFieldDesc.end() ? itDesc->second : NFTTYP_INVALID) {
                     case NFTTYP_COMPACTSIZE:
-                        //std::cerr << "parsing compactsize" << std::endl;
+                        std::cerr << "parsing compactsize" << std::endl;
                         ss >> COMPACTSIZE(uint64Value);
-                        //std::cerr << "compactsize value=" << uint64Value << std::endl;
+                        LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "compactsize=" << uint64Value << std::endl); 
                         break;
                     case NFTTYP_VARBUFFER:
-                        //std::cerr << "parsing varbuffer" << std::endl;
+                        std::cerr << "parsing varbuffer" << std::endl;
                         ss >> vuint8Value;
+                        LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "varbuffer=" << HexStr(vuint8Value) << std::endl); 
                         break;
                     default:
-                        LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << __func__ << " id not allowed (" << (int)id << ")" << std::endl);
-                        stop = true;
+                        LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "id not allowed (" << (int)id << ")" << std::endl);
+                        invalidFieldType = true;
+                        break;
                 }
-                if (stop)
+                if (invalidFieldType)
                     break;
                 if (fieldIds.count((nftFieldId)id) > 0)
                     hasDuplicates = true;
@@ -73,6 +76,8 @@ static bool ValidateNftData(const vuint8_t &vdata)
             }
         )) 
         {
+            if (invalidFieldType)
+                return false;
             if (!hasDuplicates)  {
                 if (fieldIds.size() > 0)  
                     return true;
