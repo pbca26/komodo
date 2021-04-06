@@ -166,7 +166,6 @@ def run_assets_orders(rpc):
     exit
 
 menuItems = [
-    {"Check current connection": tuilib.getinfo_tui},
     {"run assets orders": run_assets_orders},
     {"Exit": exit}
 ]
