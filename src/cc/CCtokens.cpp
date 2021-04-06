@@ -170,8 +170,10 @@ CAmount TokensV1::CheckTokensvout(bool goDeeper, bool checkPubkeys /*<--not used
             }
 
             // get optional nft eval code:
+            TokenDataTuple tokenData;
             vscript_t vopretNonfungible;
-            GetNonfungibleData<TokensV1>(reftokenid, vopretNonfungible);
+            GetTokenData<TokensV1>(reftokenid, tokenData, vopretNonfungible);
+
             if (vopretNonfungible.size() > 0)   {
                 // shift evalcodes so the first is NFT evalcode 
                 evalCode2 = evalCode1;
@@ -300,7 +302,8 @@ CAmount TokensV1::CheckTokensvout(bool goDeeper, bool checkPubkeys /*<--not used
             }
 
             LOGSTREAM(cctokens_log, CCLOG_DEBUG2, stream << indentStr << "IsTokensvout() ValidateTokenOpret returned not-null funcId=" << (char)(funcId ? funcId : ' ') << " for txid=" << tx.GetHash().GetHex() << " for tokenid=" << reftokenid.GetHex() << std::endl);
-
+            
+            TokenDataTuple tokenData;
             vscript_t vopretExtra, vopretNonfungible;
 
             // MakeTokenCCVout functions support up to two evalcodes in vouts
@@ -325,7 +328,7 @@ CAmount TokensV1::CheckTokensvout(bool goDeeper, bool checkPubkeys /*<--not used
             LOGSTREAM(cctokens_log, CCLOG_DEBUG2, stream << "IsTokensvout() vopretExtra=" << HexStr(vopretExtra) << std::endl);
 
             // get non-fungible data
-            GetNonfungibleData<TokensV1>(reftokenid, vopretNonfungible);
+            GetTokenData<TokensV1>(reftokenid, tokenData, vopretNonfungible);
             std::vector<CPubKey> voutPubkeys;
             FilterOutTokensUnspendablePk(voutPubkeysInOpret, voutPubkeys);  // cannot send tokens to token unspendable cc addr (only marker is allowed there)
 

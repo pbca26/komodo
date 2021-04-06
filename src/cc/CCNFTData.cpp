@@ -16,81 +16,127 @@
 #include "CCtokens.h"
 #include "CCNFTData.h"
 
-// nft field id:
-enum nftFieldId : uint8_t {
-    NFTFLD_NONE = 0x0, 
-    NFTFLD_ID = 0x1, 
-    NFTFLD_URL = 0x2 
+static const std::map<nftPropId, nftPropType> nftPropDesc = {
+    { NFTPROP_ID, NFTTYP_UINT64 },
+    { NFTPROP_URL, NFTTYP_VUINT8 },
+    { NFTPROP_ROYALTY, NFTTYP_UINT64 },
 };
 
-enum nftFieldType : uint8_t {
-    NFTTYP_INVALID = 0x0, 
-    NFTTYP_COMPACTSIZE = 0x1, 
-    NFTTYP_VARBUFFER = 0x2 
-};
+typedef struct {
+    nftPropType type;
+    struct
+    {
+        uint64_t uint64;
+        vuint8_t vuint8;
+    } v;
+} nftPropValue;
 
-static const std::map<nftFieldId, nftFieldType> nftFieldDesc = {
-    { NFTFLD_ID, NFTTYP_COMPACTSIZE },
-    { NFTFLD_URL, NFTTYP_VARBUFFER },
-};
-
-
-static bool ValidateNftData(const vuint8_t &vdata)
+static bool ParseNftData(const vuint8_t &vdata, std::map<nftPropId, nftPropValue> &propMap, std::string &sError)
 {
-    std::set<nftFieldId> fieldIds;
-    if (vdata.size() > 0 && vdata[0] == EVAL_NFTDATA) {
-        uint8_t evalCode;
-        uint8_t id;
-        uint64_t uint64Value;
-        vuint8_t vuint8Value;
-
-        bool invalidFieldType = false;
+    if (vdata.size() > 2 && vdata[0] == EVAL_NFTDATA) {
+        uint8_t evalCode, version;
+        bool invalidPropType = false;
         bool hasDuplicates = false;
+        const char *funcname = __func__;
+    
+        if (vdata[1] != NFTDATA_VERSION)
+        {
+            LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "invalid nft data version" << std::endl); 
+            sError = "invalide nft data version";
+            return false;
+        }
+        propMap.clear();
 
-        if(E_UNMARSHAL(vdata, ss >> evalCode; // evalcode in the first byte
+        if(E_UNMARSHAL(vdata, ss >> evalCode; ss >> version; // evalcode in the first byte
             while(!ss.eof()) {
-                ss >> id; 
-                auto itDesc = nftFieldDesc.find((nftFieldId)id);
-                switch(itDesc != nftFieldDesc.end() ? itDesc->second : NFTTYP_INVALID) {
-                    case NFTTYP_COMPACTSIZE:
-                        std::cerr << "parsing compactsize" << std::endl;
-                        ss >> COMPACTSIZE(uint64Value);
-                        LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "compactsize=" << uint64Value << std::endl); 
+                uint8_t propId;
+                ss >> propId; 
+                auto itDesc = nftPropDesc.find((nftPropId)propId);
+                nftPropValue value;
+                nftPropType type = itDesc != nftPropDesc.end() ? itDesc->second : NFTTYP_INVALID;
+                switch(type) {
+                    case NFTTYP_UINT64:
+                        value.type = type;
+                        ss >> COMPACTSIZE(value.v.uint64);
+                        LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << funcname << " parsed prop id=" << (int)propId << " compactsize value=" << value.v.uint64 << std::endl); 
                         break;
-                    case NFTTYP_VARBUFFER:
-                        std::cerr << "parsing varbuffer" << std::endl;
-                        ss >> vuint8Value;
-                        LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "varbuffer=" << HexStr(vuint8Value) << std::endl); 
+                    case NFTTYP_VUINT8:
+                        value.type = type;
+                        ss >> value.v.vuint8;
+                        LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << funcname << " parsed prop id=" << (int)propId << " varbuffer=" << HexStr(value.v.vuint8) << std::endl); 
                         break;
                     default:
-                        LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "id not allowed (" << (int)id << ")" << std::endl);
-                        invalidFieldType = true;
+                        LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << funcname << " property id not allowed (" << (int)propId << ")" << std::endl);
+                        invalidPropType = true;
                         break;
                 }
-                if (invalidFieldType)
+                if (invalidPropType)
                     break;
-                if (fieldIds.count((nftFieldId)id) > 0)
+                if (propMap.count((nftPropId)propId) != 0)
                     hasDuplicates = true;
                 else
-                    fieldIds.insert((nftFieldId)id);
+                    propMap.insert(std::make_pair((nftPropId)propId, value));
             }
         )) 
         {
-            if (invalidFieldType)
+            if (invalidPropType) {
+                sError = "invalid property type";
                 return false;
+            }
             if (!hasDuplicates)  {
-                if (fieldIds.size() > 0)  
+                if (propMap.size() == nftPropDesc.size())  // exact prop number
                     return true;
                 else 
-                    LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << __func__ << " no nft properties" << std::endl);
+                    LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << __func__ << " invalid property number" << std::endl);
             }
-            else 
+            else  {
                 LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << __func__ << " duplicates in nft data " << std::endl);            
+                sError = "duplicate property type";
+            }
         }
         else 
            LOGSTREAM(cctokens_log, CCLOG_DEBUG1, stream << __func__ << " could not unmarshal nft data" << std::endl);
     }
+    sError = "could not unmarshal nft data";
     return false;
+}
+
+bool GetNftDataAsUint64(const vuint8_t &vdata, nftPropId propId, uint64_t &val)
+{
+    std::map<nftPropId, nftPropValue> propMap;
+    std::string sError;
+    ParseNftData(vdata, propMap, sError);
+    if (propMap.count(propId) > 0 && propMap[propId].type == NFTTYP_UINT64) {
+        val = propMap[propId].v.uint64;
+        return true;
+    }
+    return false;
+}
+
+bool GetNftDataAsVuint8(const vuint8_t &vdata, nftPropId propId, vuint8_t &val)
+{
+    std::map<nftPropId, nftPropValue> propMap;
+    std::string sError;
+
+    ParseNftData(vdata, propMap, sError);
+    if (propMap.count(propId) > 0 && propMap[propId].type == NFTTYP_VUINT8) {
+        val = propMap[propId].v.vuint8;
+        return true;
+    }
+    return false;
+}
+
+static bool ValidateNftData(const vuint8_t &vdata, std::string &sError)
+{
+    std::map<nftPropId, nftPropValue> propMap;
+    if( ParseNftData(vdata, propMap, sError) )  {
+        if (propMap[NFTPROP_ROYALTY].v.uint64 >= NFTROYALTY_DIVISOR ) {
+            sError = "invalid royalty value (must be in 0...999)";
+            return false;
+        }
+        return true;
+    }
+    return false;    
 }
 
 bool ValidateNFTOpretV1(struct CCcontract_info *cp, Eval* eval, const CTransaction &tx, const CScript &opret)
@@ -99,7 +145,7 @@ bool ValidateNFTOpretV1(struct CCcontract_info *cp, Eval* eval, const CTransacti
     std::vector<CPubKey> vpks;
     std::vector<vuint8_t> voprets;
     if (DecodeTokenOpRetV1(opret, tokenid, vpks, voprets) == 0)
-        return eval->Error("could not decode opdrop token data");
+        return eval->Error("could not decode nft data");
     
     for(auto const &vin : tx.vin)
     {
@@ -110,6 +156,7 @@ bool ValidateNFTOpretV1(struct CCcontract_info *cp, Eval* eval, const CTransacti
             vuint8_t vorigpk;
             std::string name, desc;
             std::vector<vuint8_t> vcroprets;
+            std::string sError;
 
             if (!myGetTransaction(vin.prevout.hash, vintx, hashBlock))
                 return eval->Error("could load vintx");
@@ -117,25 +164,29 @@ bool ValidateNFTOpretV1(struct CCcontract_info *cp, Eval* eval, const CTransacti
                 return eval->Error("could not decode token create tx opreturn");
             if (vcroprets.size() == 0)
                 return eval->Error("no nft data in opreturn");
-            if (!ValidateNftData(vcroprets[0]))
-                return eval->Error("nft data invalid");
+            if (!ValidateNftData(vcroprets[0], sError))
+                return eval->Error("nft data invalid: " + sError);
         }
     }
     return true;
 }
 
+// check token v2 create tx
 bool ValidateNFTOpretV2(struct CCcontract_info *cp, Eval* eval, const CTransaction &tx, const CScript &opret)
 {
     vuint8_t vorigpk;
     std::string name, desc;
     std::vector<vuint8_t> vcroprets;
 
-    if (DecodeTokenCreateOpRetV2(opret, vorigpk, name, desc, vcroprets) == 0)
-        return eval->Error("could not decode opdrop token data");
-    if (vcroprets.size() == 0)
-        return eval->Error("no nft data in opreturn");
-    if (!ValidateNftData(vcroprets[0]))
-        return eval->Error("nft data invalid");
+    if (IsTokenCreateFuncid(DecodeTokenCreateOpRetV2(opret, vorigpk, name, desc, vcroprets)))
+    {
+        std::string sError;
+
+        if (vcroprets.size() == 0)
+            return eval->Error("no nft data in opreturn");
+        if (!ValidateNftData(vcroprets[0], sError))
+            return eval->Error("nft data invalid: " + sError);
+    }
     return true;
 }
 
@@ -146,7 +197,18 @@ bool NFTDataValidate(struct CCcontract_info *cp, Eval* eval, const CTransaction 
 
     vuint8_t vopret;
     uint8_t evalTokens;
-    int nNoTokenOpdrops = 0;
+    int goodTokenData = 0;
+
+    // check if this is a token v2 create tx
+    if (GetOpReturnData(tx.vout.back().scriptPubKey, vopret) &&
+        vopret.size() > 2 &&
+        vopret[0] == EVAL_TOKENSV2)
+    {
+        if (IsTokenCreateFuncid(vopret[1]))
+            return ValidateNFTOpretV2(cp, eval, tx, tx.vout.back().scriptPubKey);
+        else
+            return true; // do not check further tokens txns
+    }
 
     // find NFT vout:
     for (int i = 0; i < tx.vout.size(); i ++)   {
@@ -155,38 +217,29 @@ bool NFTDataValidate(struct CCcontract_info *cp, Eval* eval, const CTransaction 
         if (tx.vout[i].scriptPubKey.IsPayToCryptoCondition()) 
         {
             CScript ccdata;
+            vuint8_t vopdrop;
             if (GetCCDropAsOpret(tx.vout[i].scriptPubKey, ccdata) &&
-                GetOpReturnData(ccdata, vopret) &&
-                vopret.size() > 2 &&
-                (vopret[0] == EVAL_TOKENS || vopret[0] == EVAL_TOKENSV2))
+                GetOpReturnData(ccdata, vopdrop) &&
+                vopdrop.size() > 2 &&
+                vopdrop[0] == EVAL_TOKENS)
             {
-                if (vopret[0] == EVAL_TOKENS)   
-                    return ValidateNFTOpretV1(cp, eval, tx, ccdata);
-                else 
-                    return ValidateNFTOpretV2(cp, eval, tx, ccdata);
-            }
-            else
-            {
-                nNoTokenOpdrops ++;
+                if( !ValidateNFTOpretV1(cp, eval, tx, ccdata) )
+                    return false;  // eval is set
+                else
+                    goodTokenData ++;
             }
         }
     }
 
-    if (nNoTokenOpdrops > 0)
+    // if last vout opreturn exists
+    if (vopret.size() > 2 &&
+        vopret[0] == EVAL_TOKENS)
     {
-        // if there are cc vouts with no token data
-        // should be last vout opreturn for them
-        if (GetOpReturnData(tx.vout.back().scriptPubKey, vopret) &&
-            vopret.size() > 2 &&
-            (vopret[0] == EVAL_TOKENS || vopret[0] == EVAL_TOKENSV2))
-        {
-            if (vopret[0] == EVAL_TOKENS)   
-                return ValidateNFTOpretV1(cp, eval, tx, tx.vout.back().scriptPubKey);
-            else 
-                return ValidateNFTOpretV2(cp, eval, tx, tx.vout.back().scriptPubKey);
-        }
+        if (!ValidateNFTOpretV1(cp, eval, tx, tx.vout.back().scriptPubKey))
+            return false;
+        else
+            goodTokenData ++;
     }
-
-    return eval->Error("no nft data found");
+    return goodTokenData > 0 ? true : eval->Error("no nft data found");
 }
 

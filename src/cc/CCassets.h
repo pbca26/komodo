@@ -31,7 +31,6 @@
 #define ASSETS_GLOBALADDR_VOUT 0
 #define ASSETS_MARKER_AMOUNT 10000
 
-
 // CCcustom
 bool AssetsValidate(struct CCcontract_info *cp, Eval* eval, const CTransaction &tx, uint32_t nIn);
 bool Assetsv2Validate(struct CCcontract_info *cp, Eval* eval, const CTransaction &tx, uint32_t nIn);

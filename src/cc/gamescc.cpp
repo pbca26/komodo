@@ -289,6 +289,7 @@ uint8_t games_finishopretdecode(uint256 &gametxid, uint256 &tokenid, int32_t &re
 {
     std::string name, description; std::vector<uint8_t> vorigPubkey;
     std::vector<vscript_t>  oprets, opretsDummy;
+    TokenDataTuple tokenData;
     std::vector<uint8_t> vopretNonfungible, vopret, vopretDummy,origpubkey;
     uint8_t f,*script; std::vector<CPubKey> voutPubkeys;
     tokenid = zeroid;
@@ -302,7 +303,7 @@ uint8_t games_finishopretdecode(uint256 &gametxid, uint256 &tokenid, int32_t &re
     else if ( script[1] != 'H' && script[1] != 'Q' && (f= DecodeTokenOpRetV1(scriptPubKey, tokenid, voutPubkeys, opretsDummy)) != 0 )
     {
         //fprintf(stderr,"decode opret %c tokenid.%s\n",script[1],tokenid.GetHex().c_str());
-        GetNonfungibleData<TokensV1>(tokenid, vopretNonfungible);  //load nonfungible data from the 'tokenbase' tx
+        GetTokenData<TokensV1>(reftokenid, tokenData, vopretNonfungible);   //load nonfungible data from the 'tokenbase' tx
         vopret = vopretNonfungible;
     }
     if ( vopret.size() > 2 && E_UNMARSHAL(vopret, ss >> e; ss >> f; ss >> gametxid;  ss >> symbol; ss >> pname; ss >> regslot; ss >> pk; ss >> playerdata) != 0 && e == EVAL_GAMES && (f == 'H' || f == 'Q') )

@@ -288,14 +288,15 @@ static UniValue tokencreate(const std::string& fname, const UniValue& params, bo
     
     if (params.size() >= 3)     {
         description = params[2].get_str();
-        if (description.size() > MAX_SCRIPT_ELEMENT_SIZE)   
-            return MakeResultError("Token description must be <= " + std::to_string(MAX_SCRIPT_ELEMENT_SIZE));
+        if (description.size() > 4096)   
+            return MakeResultError("Token description must be <= " + std::to_string(4096));  // allowed > MAX_SCRIPT_ELEMENT_SIZE
     }
     
     if (params.size() >= 4)    {
         nonfungibleData = ParseHex(params[3].get_str());
-        if (nonfungibleData.size() > MAX_SCRIPT_ELEMENT_SIZE) // script element limit
-            return MakeResultError("Non-fungible data size must be <= " + std::to_string(MAX_SCRIPT_ELEMENT_SIZE));
+        // looks like bigger than 520 data is available in opreturn 
+        // if (nonfungibleData.size() > MAX_SCRIPT_ELEMENT_SIZE) // script element limit
+        //    return MakeResultError("Non-fungible data size must be <= " + std::to_string(MAX_SCRIPT_ELEMENT_SIZE));
         
         if( nonfungibleData.empty() ) 
             return MakeResultError("Non-fungible data incorrect");
@@ -421,8 +422,9 @@ UniValue tokentransfermany(const std::string& name, const UniValue& params, bool
     
     for (const auto &tokenid : tokenids)
     {
+        TokenDataTuple tokenData;
         vuint8_t vnftData;
-        GetNonfungibleData<V>(tokenid, vnftData);
+        GetTokenData<V>(tokenid, tokenData, vnftData);
         CCwrapper probeCond;
         if (vnftData.size() > 0)
             probeCond.reset( V::MakeTokensCCcond1(vnftData[0], mypk) );

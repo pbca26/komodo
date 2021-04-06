@@ -20,6 +20,7 @@
 #ifndef CC_TOKENS_H
 #define CC_TOKENS_H
 
+#include <tuple>
 #include "CCinclude.h"
 
 // implementation of basic token functions
@@ -27,7 +28,8 @@
 /// Returns non-fungible data of token if this is a NFT
 /// @param tokenid id of token
 /// @param vopretNonfungible non-fungible token data. The first byte is the evalcode of the contract that validates the NFT-data
-//void GetNonfungibleData(uint256 tokenid, vscript_t &vopretNonfungible);
+//void GetNonfungibleData(uint256 tokenid, vscript_t &vopretNonfungible);  // see template impl
+typedef std::tuple<vuint8_t, std::string, std::string> TokenDataTuple;  // pubkey, name, desc
 
 // CCcustom
 bool TokensValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, uint32_t nIn);
@@ -38,11 +40,6 @@ bool Tokensv2Validate(struct CCcontract_info *cp,Eval* eval,const CTransaction &
 // wrappers for tokens cc v1 or v2
 ////std::string CreateTokenLocal(CAmount txfee, CAmount tokensupply, std::string name, std::string description, vscript_t nonfungibleData);
 //bool IsTokenMarkerVout(CTxOut vout);
-
-//int64_t GetTokenBalance(CPubKey pk, uint256 tokenid, bool usemempool = false);
-//UniValue TokenInfo(uint256 tokenid);
-UniValue TokenList();
-UniValue TokenV2List();
 
 /// Adds token inputs to transaction object. If tokenid is a non-fungible token then the function will set additionalTokensEvalcode2 variable in the cp object to the eval code from NFT data to spend NFT outputs properly
 /// @param cp CCcontract_info structure
@@ -261,6 +258,9 @@ CTxOut MakeTokensCC1of2voutMixed(uint8_t evalcode, CAmount nValue, CPubKey pk1, 
 /// @see CCcontract_info
 CTxOut MakeTokensCC1of2voutMixed(uint8_t evalcode, uint8_t evalcode2, CAmount nValue, CPubKey pk1, CPubKey pk2, vscript_t* pvData = nullptr);
 
+
+UniValue TokenList();
+UniValue TokenV2List();
 
 inline bool IsTokenCreateFuncid(uint8_t funcid) { return funcid == 'c'; }
 inline bool IsTokenTransferFuncid(uint8_t funcid) { return funcid == 't'; }
