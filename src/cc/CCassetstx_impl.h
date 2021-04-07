@@ -18,7 +18,7 @@
 
 #include "CCtokens.h"
 #include "CCassets.h"
-#include "CCNftData.h"
+#include "CCNFTData.h"
 
 template<class T, class A>
 UniValue AssetOrders(uint256 refassetid, CPubKey pk, uint8_t evalcodeNFT)
