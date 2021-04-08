@@ -13,7 +13,10 @@
  *                                                                            *
  ******************************************************************************/
 
-#include "CCassets.h"
+#include "CCtokens_v0.h"
+#include "CCassets_v0.h"
+
+namespace tokensv0 {
 
 /*
  The SetAssetFillamounts() and ValidateAssetRemainder() work in tandem to calculate the vouts for a fill and to validate the vouts, respectively.
@@ -386,11 +389,11 @@ bool GetAssetorigaddrs(struct CCcontract_info *cp, char *origCCaddr, char *origN
 
 	if (vintxFuncId == 's' || vintxFuncId == 'S') {
 		// bGetCCaddr = GetCCaddress(cpTokens, origCCaddr, pubkey2pk(origpubkey));  
-        cpTokens->additionalTokensEvalcode2 = cp->additionalTokensEvalcode2;  // add non-fungible if present
+        cpTokens->evalcodeNFT = cp->evalcodeNFT;  // add non-fungible if present
         bGetCCaddr = GetTokensCCaddress(cpTokens, origCCaddr, pubkey2pk(origpubkey));  // tokens to single-eval token or token+nonfungible
 	}
 	else if (vintxFuncId == 'b' || vintxFuncId == 'B') {
-        cpTokens->additionalTokensEvalcode2 = cp->additionalTokensEvalcode2;  // add non-fungible if present
+        cpTokens->evalcodeNFT = cp->evalcodeNFT;  // add non-fungible if present
         bGetCCaddr = GetTokensCCaddress(cpTokens, origCCaddr, pubkey2pk(origpubkey));  // tokens to single-eval token or token+nonfungible
 	}
 	else  {
@@ -648,3 +651,5 @@ bool AssetCalcAmounts(struct CCcontract_info *cpAssets, int64_t &inputs, int64_t
 		it's now done in Tokens  */
 	return(true);
 }
+
+};
